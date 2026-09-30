@@ -1,7 +1,7 @@
 # DayZ Enforce Script Development Rules
 
 > For Cursor, Windsurf, and other AI coding assistants.
-> Target: DayZ 1.28+ (v1.28.161464)
+> Target: DayZ 1.29 (v1.29.163709), 1.28 notes kept
 
 ## Language: Enforce Script
 
@@ -37,7 +37,7 @@ DayZ uses **Enforce Script**, a C-like language. Key differences from C/C#/C++:
 - Check `GetGame().IsServer()` before gameplay logic
 - Parenthesize bitwise operations: `(flags & FLAG) == FLAG`
 - Assign getter results to local var before `foreach`
-- Use `g_Game` instead of `GetGame()` in performance-critical code
+- Use `g_Game` instead of `GetGame()` (1.29: `GetGame()` is only a wrapper returning `g_Game`)
 
 ## Mod Structure
 ```
@@ -105,12 +105,23 @@ if (player && player.GetInventory())
 ```
 
 ## Documentation Sources
-- Script API (v1.28): https://dayz-scripts.yadz.app/
+- Script API (latest, 1.29): https://diff.yadz.app/ (`api.json`, `classes/<Name>/`, `changelog/`)
 - Script Diff: https://github.com/BohemiaInteractive/DayZ-Script-Diff
 - BI Wiki: https://community.bistudio.com/wiki/DayZ:Enforce_Script_Syntax
 - CF Docs: https://github.com/Arkensor/DayZ-CommunityFramework
 - Expansion Wiki: https://github.com/salutesh/DayZ-Expansion-Scripts/wiki
 - Server Config: https://dzconfig.com/wiki/
+
+## 1.29 Breaking Changes
+1. **`GetGame()`** is now a script function `DayZGame GetGame() { return g_Game; }` - use `g_Game`
+2. **`ActiveState` enum reordered**: `INACTIVE=0, ACTIVE=1, ALWAYS_ACTIVE=2` (was `ACTIVE, INACTIVE, ...`) - never use raw ints
+3. **Vehicle headlights native**: `CarScript.m_HeadlightsOn` removed; use `Transport.LightIsOn/LightOn/LightOff/LightToggle`, override `OnBeforeLightOn()`
+4. **Sleeping physics bodies** no longer tick `EOnSimulate`/`EOnPostSimulate`
+5. **Junctures**: `AddActionJuncture`/`AddInventoryJuncture(Ex)` gained `Managed userData = null`
+6. **`InventoryLocationType.TEMP`** added (client-side desync limbo)
+7. **StaminaHandler** reworked (move/state reconciliation); `GetCooldownTimer` removed, `DepleteStamina`/`OnRPC` obsolete
+8. **Removed**: `DayZPlayerImplement.GetNVEntityAttached()` - use `GetCachedEquipment()`; `CGame.Gizmo*` obsolete - use `GetGizmoApi()`
+9. **Terrain**: WRP must be binarized with 1.29 tools
 
 ## 1.28 Breaking Changes
 1. Vehicle brake values must be doubled

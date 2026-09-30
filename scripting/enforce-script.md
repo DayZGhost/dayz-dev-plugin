@@ -300,18 +300,18 @@ void Process(notnull MyClass data) { /* data is guaranteed non-null */ }
 
 ## Key Singletons
 ```c
-GetGame()           // CGame - main game object (use g_Game in 1.28+ for perf)
+GetGame()           // DayZGame (1.29: script wrapper that returns g_Game - prefer g_Game)
 GetDayZGame()       // DayZGame - DayZ-specific game
 GetPlayer()         // Man - local player (client only)
 GetRPCManager()     // CF RPCManager (requires Community Framework)
-g_Game              // Global game reference (faster than GetGame() in 1.28+)
+g_Game              // DayZGame global - what vanilla uses everywhere since 1.29
 ```
 
 ## Performance Notes
 
 ```c
 // AVOID: GetObjectsAtPosition / GetObjectsAtPosition3D - very expensive
-// USE: Static arrays, triggers, or GetScene() instead
+// USE: Cache results, use triggers, or keep your own registry of relevant objects
 
 // AVOID: g_Game.SurfaceIsPond() and g_Game.SurfaceIsSea() - remarkably slow
 // USE: g_Game.GetWaterDepth(position) <= 0 for water checks

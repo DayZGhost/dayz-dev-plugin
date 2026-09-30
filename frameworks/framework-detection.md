@@ -85,7 +85,12 @@ bool HasExpansion()
 | Territory/Basebuilding | No | No | Yes |
 | Vehicle Extensions | No | No | Yes |
 
-## Version Requirements (DayZ 1.28)
+## Version Requirements
+
+For DayZ 1.29 use the current CF / Expansion releases (no verified minimum versions are recorded here yet);
+check the Workshop / GitHub changelogs for 1.29 support.
+
+### DayZ 1.28
 
 | Framework | Minimum Version | Notes |
 |-----------|----------------|-------|

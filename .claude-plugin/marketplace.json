@@ -7,15 +7,15 @@
   },
   "metadata": {
     "description": "DayZ development plugin with dynamic documentation fetching for Enforce Script, Community Framework, and Expansion",
-    "version": "1.0.0"
+    "version": "1.1.0"
   },
   "plugins": [
     {
       "name": "dayz-dev",
       "source": ".",
-      "description": "DayZ Enforce Script development orchestrator. Dynamically fetches class APIs, script references, and mod documentation. Supports vanilla, Community Framework, and Expansion development for DayZ 1.28+.",
+      "description": "DayZ Enforce Script development orchestrator. Dynamically fetches class APIs, script references, and mod documentation. Supports vanilla, Community Framework, and Expansion development for DayZ 1.29 (and 1.28).",
       "category": "development",
-      "version": "1.0.0",
+      "version": "1.1.0",
       "tags": [
         "dayz",
         "enforce-script",
@@ -30,7 +30,7 @@
       "author": {
         "name": "Chaos"
       },
-      "homepage": "https://github.com/chaos/dayz-dev-plugin"
+      "homepage": "https://github.com/DayZGhost/dayz-dev-plugin"
     }
   ]
 }

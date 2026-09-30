@@ -54,20 +54,22 @@ if (!GetGame().IsDedicatedServer())
 }
 ```
 
-## Player Lifecycle (11 Stages)
+## Player Lifecycle (MissionServer)
 
 ```
 1. OnInit()                    - Mission initialization
-2. InvokeOnConnect()           - Player connecting
+2. OnClientPrepareEvent()      - Before the character is loaded/created (DB use, spawn pos)
 3. OnClientNewEvent()          - New character creation
 4. OnClientRespawnEvent()      - Character respawn
-5. OnClientReadyEvent()        - Client fully loaded
-6. OnUpdate()                  - Per-frame update (mission level)
-7. OnPlayerDisconnected()      - Player disconnecting (before cleanup)
-8. OnClientDisconnectedEvent() - Player disconnected (cleanup)
-9. InvokeOnDisconnect()        - Final disconnect processing
-10. OnMissionFinish()          - Mission ending
-11. OnEvent(EventType, ...)    - Generic event handler
+5. OnClientReadyEvent()        - Existing character loaded, client ready
+6. OnClientReconnectEvent()    - Player reconnected to a still-present character
+7. InvokeOnConnect()           - Player connected (after new/ready)
+8. OnUpdate()                  - Per-frame update (mission level)
+9. OnClientDisconnectedEvent() - Player started disconnecting (logout timer)
+10. PlayerDisconnected()       - Logout timer done (identity may already be deleted!)
+11. InvokeOnDisconnect()       - Final disconnect processing
+12. OnMissionFinish()          - Mission ending
+13. OnEvent(EventType, ...)    - Generic event handler (ClientNewEventTypeID, ClientReadyEventTypeID, ...)
 ```
 
 ### MissionServer Key Methods
@@ -268,7 +270,7 @@ void RPC_GiveItem(CallType type, ParamsReadContext ctx, PlayerIdentity sender, O
     if (!ctx.Read(data)) return;
 
     // Find the actual player from identity
-    PlayerBase player = PlayerBase.Cast(GetGame().GetPlayerByIdentity(sender));
+    PlayerBase player = PlayerBase.Cast(sender.GetPlayer());
     if (!player) return;
     if (!player.IsAlive()) return;
 

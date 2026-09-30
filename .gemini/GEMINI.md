@@ -1,7 +1,7 @@
 # DayZ Enforce Script Development Rules
 
 > For Gemini Code Assist and other Gemini-powered AI coding tools.
-> Target: DayZ 1.28+ (v1.28.161464)
+> Target: DayZ 1.29 (v1.29.163709), 1.28 notes kept
 
 ## Role
 
@@ -25,6 +25,8 @@ You are a **DayZ Enforce Script development expert**. You help with DayZ mod dev
 @config/config-cpp.md
 @config/types-xml.md
 @config/server-config.md
+@testing/local-server.md
+@compatibility/version-129.md
 @compatibility/version-128.md
 
 ## Language: Enforce Script
@@ -42,7 +44,7 @@ DayZ uses **Enforce Script**, a C-like language. Key differences from C/C#/C++:
 **NEVER invent or guess Enforce Script classes, methods, config tokens, or parameters.**
 
 ### Rules:
-1. **If unsure about a class/method** -> Verify at https://dayz-scripts.yadz.app/ or DayZ-Script-Diff repo
+1. **If unsure about a class/method** -> Verify at https://diff.yadz.app/ (`api.json`, `classes/<Name>/`) or DayZ-Script-Diff repo
 2. **If unsure about config.cpp tokens** -> Verify at BI wiki
 3. **If a class doesn't exist** -> Tell user honestly, suggest alternatives
 4. **If parameters unknown** -> Look up documentation, don't guess
@@ -51,7 +53,7 @@ DayZ uses **Enforce Script**, a C-like language. Key differences from C/C#/C++:
 ### Verification Sources:
 | Type | Source |
 |------|--------|
-| Script API (v1.28) | https://dayz-scripts.yadz.app/ |
+| Script API (latest, 1.29) | https://diff.yadz.app/ (machine-readable: `api.json`, see `agent.md`) |
 | Script Diff (official) | https://github.com/BohemiaInteractive/DayZ-Script-Diff |
 | Enforce Syntax | https://community.bistudio.com/wiki/DayZ:Enforce_Script_Syntax |
 | Config tokens | https://community.bistudio.com/wiki/CfgVehicles_Config_Reference |
@@ -173,10 +175,24 @@ Check `config.cpp` for dependencies:
 | Add `: ParentClass` to `modded class` | `modded class` already inherits - never add inheritance |
 | `delete obj;` | `obj = null;` (let GC handle cleanup) |
 | Trust client data in RPCs | Always validate server-side |
-| `GetGame()` in hot paths | Use `g_Game` global (1.28+ optimization) |
+| `GetGame()` | Use `g_Game` global (1.29: `GetGame()` is just a wrapper) |
 | `SurfaceIsPond()` / `SurfaceIsSea()` | `g_Game.GetWaterDepth(pos) <= 0` (much faster) |
 | Empty `#ifdef` / `#endif` blocks | Always have content or remove entirely |
 | Skip null checks on Cast<> | Always check before using result |
+
+## 1.29 Breaking Changes (Critical)
+
+1. **`GetGame()`** is now a script function `DayZGame GetGame() { return g_Game; }` - use `g_Game`
+2. **`ActiveState` enum reordered**: `INACTIVE=0, ACTIVE=1, ALWAYS_ACTIVE=2` (was `ACTIVE, INACTIVE, ...`) - never use raw ints
+3. **Vehicle headlights native**: `CarScript.m_HeadlightsOn` removed; use `Transport.LightIsOn/LightOn/LightOff/LightToggle`, override `OnBeforeLightOn()`
+4. **Sleeping physics bodies** no longer tick `EOnSimulate`/`EOnPostSimulate`
+5. **Junctures**: `AddActionJuncture`/`AddInventoryJuncture(Ex)` gained `Managed userData = null`
+6. **`InventoryLocationType.TEMP`** added (client-side desync limbo)
+7. **StaminaHandler** reworked (move/state reconciliation); `GetCooldownTimer` removed, `DepleteStamina`/`OnRPC` obsolete
+8. **Removed**: `DayZPlayerImplement.GetNVEntityAttached()` - use `GetCachedEquipment()`; `CGame.Gizmo*` obsolete - use `GetGizmoApi()`
+9. **Terrain**: WRP must be binarized with 1.29 tools
+
+Details: `compatibility/version-129.md`.
 
 ## 1.28 Breaking Changes (Critical)
 
@@ -186,13 +202,13 @@ Check `config.cpp` for dependencies:
 4. **16-parameter method limit** enforced (compiler now rejects >16)
 5. **`sealed` keyword** prevents inheritance on marked classes
 6. **Storage wipe** recommended for modded servers (horticulture system changes)
-7. **`useNewNetworking = 1`** now default in `serverDZ.cfg`
+7. **`useNewNetworking = 1`** now default in vehicle `SimulationModule` config
 8. **`g_Game`** global variable preferred over `GetGame()` in hot paths
 
 ### New 1.28 Features
 - `sealed` keyword prevents class inheritance
 - `[Obsolete("message")]` attribute for deprecation warnings
-- `Entity.GetLOD()`, `Entity.GetCurrentLODName()`, `Entity.FindBoneLOD()` methods
+- `GetNumUserAnimationSourceNames()`, `GetUserAnimationSourceName()`, `GetSelectionBasePositionLS()`
 - Enhanced `cfgspawnabletypes.xml` with `quantmin`/`quantmax`, nested cargo, damage presets
 
 ### Framework 1.28 Compatibility
@@ -206,28 +222,28 @@ Check `config.cpp` for dependencies:
 ## Key Entity Hierarchy
 
 ```
-Class -> Managed -> Entity -> IEntity -> EntityAI -> ItemBase -> Weapon_Base
-                                      -> EntityAI -> PlayerBase -> ManBase -> DayZPlayer -> SurvivorBase
-                                      -> EntityAI -> CarScript -> Car
-                                      -> EntityAI -> BuildingBase
+Managed -> IEntity -> Object -> ObjectTyped -> Entity -> EntityAI
+EntityAI -> InventoryItem -> ItemBase -> Weapon -> Weapon_Base
+EntityAI -> Pawn -> Person -> Man -> Human -> DayZPlayer -> DayZPlayerImplement -> ManBase -> PlayerBase -> (PlayerBaseClient) -> SurvivorBase
+EntityAI -> Pawn -> Transport -> Car -> CarScript
+EntityAI -> Building -> BuildingBase -> House (typedef BuildingSuper)
 ```
 
 ## Key Singletons
 
 | Singleton | Access | Description |
 |-----------|--------|-------------|
-| `GetGame()` / `g_Game` | Everywhere | Main game instance, CGame |
+| `g_Game` / `GetGame()` | 3_Game and up | Main game instance, `DayZGame` (1.29: `GetGame()` returns `DayZGame`) |
 | `GetDayZGame()` | Everywhere | DayZGame, extended game functions |
 | `GetMission()` | 5_Mission | Current MissionBase |
-| `GetEconomy()` | Server | Economy manager |
 | `GetCEApi()` | Server | Central Economy API |
-| `GetPlayer()` | Client | Local player (ManBase) |
+| `g_Game.GetPlayer()` | Client | Local player (`Man`, cast to `PlayerBase`) |
 
 ## Documentation Sources
 
 | Source | URL | Coverage |
 |--------|-----|----------|
-| DayZ Scripts API | https://dayz-scripts.yadz.app/ | Script API v1.28, classes, methods |
+| DIFF (DayZ Scripts API) | https://diff.yadz.app/ | Script API of the latest build (1.29), per-build changelog |
 | DayZ Script Diff | https://github.com/BohemiaInteractive/DayZ-Script-Diff | Official source code changes |
 | BI Community Wiki | https://community.bistudio.com/wiki/DayZ:Enforce_Script_Syntax | Language reference |
 | DayZ Explorer | https://dayzexplorer.zeroy.com/ | Enforce essentials, Math, FileIO |

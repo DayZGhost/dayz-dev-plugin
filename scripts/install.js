@@ -59,7 +59,7 @@ function install() {
     console.log(`   - Ask DayZ modding questions naturally (skill auto-activates)`);
     console.log(`   - Use /dayz-dev <query> for direct questions`);
     console.log(`   - Restart Claude Code after installation\n`);
-    console.log(`Docs: https://github.com/chaos/dayz-dev-plugin\n`);
+    console.log(`Docs: https://github.com/DayZGhost/dayz-dev-plugin\n`);
 
   } catch (error) {
     console.error(`Installation failed: ${error.message}`);

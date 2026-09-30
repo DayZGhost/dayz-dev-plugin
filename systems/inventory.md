@@ -4,14 +4,18 @@
 ```c
 enum InventoryLocationType
 {
+    UNKNOWN,        // Freshly created object, no location yet
     GROUND,         // On the ground
-    HANDS,          // In player's hands
     ATTACHMENT,     // Attached to parent entity (e.g., scope on rifle)
     CARGO,          // In cargo space of parent
-    PROXYCARGO,     // Nearby ground items (vicinity)
-    VEHICLE         // In vehicle cargo
+    HANDS,          // In player's hands
+    PROXYCARGO,     // Cargo of a large object (building, ...)
+    VEHICLE,        // Player in vehicle, seat index stored
+    TEMP            // 1.29+: client-side only, item held in limbo during inventory desync
 }
 ```
+Values are overwritten from C++ - always use the names. Code that `switch`es over the type should
+tolerate `TEMP` on 1.29+.
 
 ## Creating Items
 
@@ -90,12 +94,11 @@ player.ServerTakeEntityToInventory(item);
 // Remove from inventory and delete
 if (GetGame().IsServer())
 {
-    // Remove from parent
-    item.GetInventory().GetCurrentInventoryLocation(loc);
-    player.GetInventory().RemoveEntity(item);
+    // Deleting removes it from its parent inventory as well
+    g_Game.ObjectDelete(item);
 
-    // Delete the entity
-    GetGame().ObjectDelete(item);
+    // or, if the item may be in the middle of an inventory operation:
+    // item.DeleteSafe();
 }
 ```
 

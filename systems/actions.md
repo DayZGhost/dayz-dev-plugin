@@ -130,8 +130,25 @@ modded class KitchenKnife
 ## Continuous Actions (Hold Actions)
 
 ```c
+// Duration is defined by the callback's action component, not by a method on the action
+class MyContinuousActionCB : ActionContinuousBaseCB
+{
+    override void CreateActionComponent()
+    {
+        m_ActionData.m_ActionComponent = new CAContinuousTime(5.0);  // seconds (see UATimeSpent for vanilla values)
+    }
+}
+
 class MyContinuousAction extends ActionContinuousBase
 {
+    void MyContinuousAction()
+    {
+        m_CallbackClass = MyContinuousActionCB;
+        m_CommandUID = DayZPlayerConstants.CMD_ACTIONFB_INTERACT;
+        m_FullBody = true;
+        m_StanceMask = DayZPlayerConstants.STANCEMASK_ERECT | DayZPlayerConstants.STANCEMASK_CROUCH;
+    }
+
     override void CreateConditionComponents()
     {
         m_ConditionItem = new CCINone();
@@ -144,9 +161,6 @@ class MyContinuousAction extends ActionContinuousBase
     {
         return true;
     }
-
-    // How long the action takes (seconds)
-    override float GetActionTime() { return 5.0; }
 
     // Called when action completes successfully
     override void OnFinishProgressServer(ActionData action_data)
@@ -230,8 +244,23 @@ ActionCondition() → true
 
 ### Action on Specific Item with Target
 ```c
+class ActionRepairWithCB : ActionContinuousBaseCB
+{
+    override void CreateActionComponent()
+    {
+        m_ActionData.m_ActionComponent = new CAContinuousTime(8.0);
+    }
+}
+
 class ActionRepairWith extends ActionContinuousBase
 {
+    void ActionRepairWith()
+    {
+        m_CallbackClass = ActionRepairWithCB;
+        m_CommandUID = DayZPlayerConstants.CMD_ACTIONFB_INTERACT;
+        m_FullBody = true;
+    }
+
     override void CreateConditionComponents()
     {
         m_ConditionItem = new CCINonRuined();   // Need tool in hand
@@ -252,8 +281,6 @@ class ActionRepairWith extends ActionContinuousBase
 
         return true;
     }
-
-    override float GetActionTime() { return 8.0; }
 
     override void OnFinishProgressServer(ActionData action_data)
     {

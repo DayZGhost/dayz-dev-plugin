@@ -208,6 +208,16 @@ FirearmActionBase
 └── FirearmActionChamberFromAttMag
 ```
 
+## 1.29 Weapon Changes
+
+- **New weapon**: SCR17 (`SCARH_Base : RifleBoltLock_Base`, recoil class `ScarhRecoil`) plus black/tan variants,
+  20rd magazine, buttstocks and Holo Sights variants (Road to Badlands updates)
+- **Per-class type objects**: `Weapon_BaseType : WeaponType : ItemBaseType`, `MagazineType`, `ItemOpticsType`
+  (2D optics textures/materials are set through `ItemOpticsType`) - see `compatibility/version-129.md`
+- **Assault rifle and pistol gunshot sounds reworked**; melee damage for crafted/blunt weapons increased
+- **Known issue (1.29.163709)**: bolt-action weapons can glitch out of hands when reloading; Derringer cannot be
+  reloaded by holding R
+
 ## 1.28 Weapon Changes
 
 - **Weapon raise/pullback mechanic reworked** - New "pullback" state when weapons contact obstacles

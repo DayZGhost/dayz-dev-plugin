@@ -1,6 +1,6 @@
 {
   "name": "claude-dayz-dev",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Claude Code plugin for DayZ mod development - Enforce Script, Community Framework, and Expansion with dynamic documentation fetching",
   "keywords": [
     "claude-code",
@@ -16,16 +16,16 @@
   ],
   "author": {
     "name": "Chaos",
-    "url": "https://github.com/chaos"
+    "url": "https://github.com/DayZGhost"
   },
-  "license": "MIT",
+  "license": "GPL-3.0-only",
   "repository": {
     "type": "git",
-    "url": "https://github.com/chaos/dayz-dev-plugin.git"
+    "url": "https://github.com/DayZGhost/dayz-dev-plugin.git"
   },
-  "homepage": "https://github.com/chaos/dayz-dev-plugin#readme",
+  "homepage": "https://github.com/DayZGhost/dayz-dev-plugin#readme",
   "bugs": {
-    "url": "https://github.com/chaos/dayz-dev-plugin/issues"
+    "url": "https://github.com/DayZGhost/dayz-dev-plugin/issues"
   },
   "files": [
     ".claude-plugin/",

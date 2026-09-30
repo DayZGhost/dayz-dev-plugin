@@ -48,7 +48,7 @@ override void OnVariablesSynchronized()
 - Never manually call `delete` - Enforce Script is garbage collected
 
 ### Performance
-- Use `g_Game` instead of `GetGame()` in frequently-called code
+- Use `g_Game` instead of `GetGame()` (1.29 vanilla does this everywhere)
 - Assign getter results to local variables before `foreach` loops
 - Methods must not exceed 16 parameters (enforced in 1.28)
 - Avoid empty `#ifdef`/`#endif` blocks (causes segfaults)

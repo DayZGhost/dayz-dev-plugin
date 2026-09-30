@@ -1,35 +1,54 @@
 # DayZ Class Hierarchy
 
 ## Core Entity Chain
+Verified against DayZ 1.29 scripts (`Pawn`/`Person` are in the chain because retail defines
+`FEATURE_NETWORK_RECONCILIATION`).
 ```
-Class
-└── Entity
-    └── IEntity
-        └── EntityAI
-            ├── DayZCreature
-            │   ├── DayZAnimal (Animal_BosTaurus, Animal_CanisLupus, etc.)
-            │   └── DayZInfected (ZmbM_*, ZmbF_* - all zombie variants)
-            ├── Man
-            │   └── ManBase
-            │       └── PlayerBase
-            │           └── DayZPlayer
-            │               └── DayZPlayerImplement (SurvivorBase)
-            ├── ItemBase (Inventory_Base)
-            │   ├── Edible_Base (food, drinks)
-            │   ├── Clothing_Base (all wearables)
-            │   ├── Container_Base (storage containers)
-            │   └── Weapon_Base
-            │       ├── Rifle_Base
-            │       ├── Pistol_Base
-            │       └── Weapon_BaseRifle
-            ├── Building / BuildingSuper
-            │   └── BuildingWithFireplace
-            ├── CarScript (all vehicles)
-            │   ├── OffroadHatchback, CivilianSedan, Hatchback_02, etc.
-            │   └── ExpansionVehicleBase (Expansion vehicles)
-            └── BaseBuildingBase
-                └── Fence, Watchtower, etc.
+Managed
+└── IEntity
+    └── Object
+        └── ObjectTyped
+            └── Entity
+                └── EntityAI
+                    ├── DayZCreature
+                    │   └── DayZCreatureAI
+                    │       ├── DayZAnimal -> AnimalBase (Animal_BosTaurus, Animal_CanisLupus, ...)
+                    │       └── DayZInfected -> ZombieBase (ZmbM_*, ZmbF_*)
+                    ├── Pawn
+                    │   ├── Person
+                    │   │   └── Man
+                    │   │       └── Human
+                    │   │           └── DayZPlayer
+                    │   │               └── DayZPlayerImplement
+                    │   │                   └── ManBase
+                    │   │                       └── PlayerBase
+                    │   │                           └── PlayerBaseClient
+                    │   │                               └── SurvivorBase (SurvivorM_*, SurvivorF_*)
+                    │   └── Transport
+                    │       ├── Car
+                    │       │   └── CarScript (OffroadHatchback, CivilianSedan, Hatchback_02, ...)
+                    │       └── Boat -> BoatScript
+                    ├── InventoryItem
+                    │   └── ItemBase (typedef Inventory_Base, InventoryItemSuper)
+                    │       ├── Edible_Base (food, drinks)
+                    │       ├── Clothing_Base (all wearables)
+                    │       ├── Container_Base (storage containers)
+                    │       ├── BaseBuildingBase
+                    │       │   └── Fence, Watchtower, ...
+                    │       └── Weapon
+                    │           └── Weapon_Base
+                    │               ├── Rifle_Base
+                    │               └── Pistol_Base
+                    └── Building
+                        └── BuildingBase
+                            └── House (typedef BuildingSuper)
+                                └── BuildingWithFireplace
 ```
+
+### Per-class type objects (1.29)
+Every config class has a shared `EntityType` instance (`Object.GetEntityType()`), e.g.
+`EntityType -> EntityAIType -> InventoryItemType -> ItemBaseType -> WeaponType / ClothingType / ...`,
+plus `ManType`, `TransportType`, `BuildingType`, `DayZCreatureType`. See `compatibility/version-129.md`.
 
 ## Key IEntity Methods (20+)
 ```c
@@ -76,7 +95,8 @@ bool IsAlive();
 bool IsUnconscious();
 
 // Inventory
-EntityAI GetItemInHands();
+ItemBase GetItemInHands();           // PlayerBase helper
+EntityAI GetEntityInHands();         // native on Man (1.29+)
 GameInventory GetInventory();
 EntityAI GetInventory().CreateInInventory(string className);
 void PredictiveTakeEntityToHands(EntityAI item);
@@ -147,30 +167,32 @@ class MyAction extends ActionInteractBase
 // InventoryLocation types
 enum InventoryLocationType
 {
+    UNKNOWN,        // freshly created object
     GROUND,         // on the ground
-    HANDS,          // in player hands
     ATTACHMENT,     // attached to parent
     CARGO,          // in cargo of parent
-    PROXYCARGO,     // nearby ground items
-    VEHICLE         // in vehicle cargo
+    HANDS,          // in player hands
+    PROXYCARGO,     // cargo of a large object (building, ...)
+    VEHICLE,        // player in vehicle (seat index stored)
+    TEMP            // 1.29+: client-side limbo during inventory desync
 }
 
 // Key GameInventory methods
-bool CreateInInventory(string type);
-bool CanAddEntityInCargo(EntityAI item);
+EntityAI CreateInInventory(string type);
+bool CanAddEntityInCargo(EntityAI e, bool flip);
 bool CanAddAttachment(EntityAI item);
 EntityAI CreateEntityInCargo(string type);
 EntityAI CreateAttachment(string type);
 bool TakeEntityToCargo(InventoryMode mode, EntityAI item);
 bool TakeEntityToInventory(InventoryMode mode, FindInventoryLocationType flags, EntityAI item);
 bool FindFreeLocationFor(EntityAI item, FindInventoryLocationType flags, out InventoryLocation loc);
-int GetInventoryItemCount();
+int CountInventory();                // number of items in this inventory
 ```
 
 ## Key Singletons
 ```c
 // Game
-CGame GetGame()             // or g_Game (faster, 1.28+)
+DayZGame g_Game             // preferred; GetGame() is a wrapper returning it (1.29)
 DayZGame GetDayZGame()
 
 // Player (client only)

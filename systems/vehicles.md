@@ -233,6 +233,48 @@ modded class CarScript
 }
 ```
 
+## 1.29 Vehicle Changes (CRITICAL)
+
+### Headlights are native now
+`m_HeadlightsOn` was removed from `CarScript`; `m_HeadlightsState` and `m_RearLightType` are `int` now.
+Light state lives on `Transport` (cars and boats):
+```c
+car.LightIsOn();     // replaces reading m_HeadlightsOn / IsScriptedLightsOn()
+car.LightOn();
+car.LightOff();
+car.LightToggle();   // what ToggleHeadlights() calls now
+
+modded class CarScript
+{
+    // Native asks before turning lights on. Vanilla requires a non-ruined battery with energy.
+    override bool OnBeforeLightOn()
+    {
+        if (!super.OnBeforeLightOn())
+            return false;
+        return true; // add your own condition
+    }
+
+    // Called by native when lights need an update (visuals, reverse/brake lights)
+    override void UpdateLights(int new_gear = -1)
+    {
+        super.UpdateLights(new_gear);
+    }
+}
+```
+
+### Other 1.29 changes
+- New `CarScript.OnInput(float dt)` (input handling split out of `OnUpdate`)
+- `Transport` gained deterministic physics helpers: `ApplyForce`, `ApplyForceAt`, `ApplyTorque`,
+  `ApplyCentralImpulse`, `ApplyTorqueImpulse`, `ApplyImpulseAt`
+- `EntityAI.SetRequiredSimulation(bool)` / `IsRequiredSimulation()` to control the active state of custom
+  `Transport` vehicles; sleeping bodies no longer tick `EOnSimulate`/`EOnPostSimulate`
+- `Transport` now gathers inputs and has dynamic collision resolution (previously only `Car`)
+- `CarScript`/`BoatScript` override `GetOwnerStateType()` for Pawn state reconciliation
+- `CarWheel.GetRuinedReplacement()` added
+- Fixed: players sent to random coordinates when exiting vehicles with improper geometry
+
+See `compatibility/version-129.md` for details.
+
 ## 1.28 Vehicle Changes (CRITICAL)
 
 ### Breaking Changes

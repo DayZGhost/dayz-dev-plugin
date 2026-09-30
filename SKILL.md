@@ -1,14 +1,14 @@
 ---
 name: dayz-dev
-description: DayZ Enforce Script development orchestrator. Dynamically fetches class APIs, script references, and mod documentation. Supports vanilla, Community Framework, and Expansion development for DayZ 1.28+.
-allowed-tools: Read, Write, Edit, Glob, Grep, Bash, WebFetch, WebSearch
+description: DayZ Enforce Script development orchestrator. Dynamically fetches class APIs, script references, and mod documentation. Supports vanilla, Community Framework, and Expansion development for DayZ 1.29 (1.28 notes kept).
+allowed-tools: Read, Glob, Grep, WebFetch, WebSearch, Bash(curl:*), Bash(jq:*), Bash(${CLAUDE_SKILL_DIR}/scripts/find-dayzserver.sh:*), Bash(${CLAUDE_SKILL_DIR}/scripts/make-server-tree.sh:*), Bash(${CLAUDE_SKILL_DIR}/scripts/free-ports.sh:*)
 ---
 
 # DayZ Development
 
 > **Dynamic documentation orchestrator** for DayZ mod development.
 > Supports vanilla Enforce Script, Community Framework (CF), and DayZ Expansion.
-> Target version: **DayZ 1.28+ (v1.28.161464)**
+> Target version: **DayZ 1.29 (v1.29.163709)** - 1.28 notes kept for migration
 
 ## Philosophy
 
@@ -32,7 +32,7 @@ allowed-tools: Read, Write, Edit, Glob, Grep, Bash, WebFetch, WebSearch
 5. **NEVER use C#/C++ syntax** -> Enforce Script looks like C but has key differences
 
 ### Before writing any class or method call:
-- [ ] Is this a real DayZ class? -> Verify at dayz-scripts.yadz.app or DayZ-Script-Diff
+- [ ] Is this a real DayZ class? -> Verify at diff.yadz.app (api.json) or DayZ-Script-Diff
 - [ ] Is this the correct method signature? -> Check parameter types and order
 - [ ] Does this work on server/client/both? -> Check script module (3_Game/4_World/5_Mission)
 - [ ] Am I null-checking accessors? -> Cast<>, GetInventory(), GetIdentity(), GetPlayer()
@@ -46,7 +46,9 @@ allowed-tools: Read, Write, Edit, Glob, Grep, Bash, WebFetch, WebSearch
 ### Verification Sources:
 | Type | Source | Action |
 |------|--------|--------|
-| Script API (v1.28) | https://dayz-scripts.yadz.app/ | WebFetch for class/method docs |
+| Script API (latest, 1.29) | https://diff.yadz.app/ | `api.json` via Bash/jq, or WebFetch `classes/<Name>/` |
+| Build diff / changelog | https://diff.yadz.app/changelog/ | API diff between any two builds (JS page - use Script Diff git for exact diffs) |
+| Deprecated APIs | https://diff.yadz.app/deprecated/ | Everything marked `[Obsolete]` |
 | Script Diff (official) | https://github.com/BohemiaInteractive/DayZ-Script-Diff | Check exact source code |
 | Enforce Syntax | https://community.bistudio.com/wiki/DayZ:Enforce_Script_Syntax | Language reference |
 | Config tokens | https://community.bistudio.com/wiki/CfgVehicles_Config_Reference | Config.cpp reference |
@@ -101,7 +103,9 @@ if (player)
 | `config/config-cpp.md` | config.cpp reference and patterns | Item/vehicle config |
 | `config/types-xml.md` | types.xml, economy system | Loot spawning |
 | `config/server-config.md` | Server configuration files | Server setup |
-| `compatibility/version-128.md` | 1.28 breaking changes and new features | Version questions, migration |
+| `testing/local-server.md` | Find the Steam-installed DayZ Server, build a symlinked server tree, run a mod headless, read the logs | Testing/verifying any mod change |
+| `compatibility/version-129.md` | 1.29 breaking changes and new features | Version questions, migration (current) |
+| `compatibility/version-128.md` | 1.28 breaking changes and new features | Migrating from 1.27 or older |
 
 ---
 
@@ -119,29 +123,49 @@ if (player)
 | Script diff between versions | **FETCH from DayZ-Script-Diff repo** |
 | Server configuration | **FETCH from DZconfig wiki** |
 | Mod structure, best practices | **READ local files** |
-| 1.28 compatibility/changes | **READ local compatibility file** |
+| 1.28 / 1.29 compatibility/changes | **READ local compatibility files** |
 
 ### Step 2: WebFetch URLs
 
-#### Script API Reference (v1.28)
-**Base URL:** `https://dayz-scripts.yadz.app/`
+#### Script API Reference (DIFF, latest PC stable - 1.29)
+**Base URL:** `https://diff.yadz.app/` (formerly `dayz-scripts.yadz.app`, which now redirects; the old
+Doxygen paths like `/d5/d78/group___enforce` are gone)
 
+The site publishes machine-readable files for agents (see https://diff.yadz.app/agent.md):
+| File | Content |
+|------|---------|
+| https://diff.yadz.app/api.json | Every class, method, field, enum, global, typedef, macro of the latest build (~8.5 MB) |
+| https://diff.yadz.app/assets/notes.json | Community notes keyed by `Type` or `Type.Member` (not from BI) |
+| https://diff.yadz.app/search.json | Compact name index |
+| https://diff.yadz.app/assets/versions.json | Every documented build with its DayZ-Script-Diff commit `sha` |
+
+`api.json` is too large for WebFetch - query it with Bash when available:
+```bash
+curl -s https://diff.yadz.app/api.json -o /tmp/dayz-api.json   # once per session
+jq '.classes[] | select(.name=="CarScript") | {name, base, file}' /tmp/dayz-api.json
+jq -c '.classes[] | select(.name=="CarScript").methods[] | select(.name=="UpdateLights")' /tmp/dayz-api.json
+curl -s https://diff.yadz.app/assets/notes.json | jq '."ActionBase.ActionCondition"'
+```
+
+Without Bash, WebFetch the per-class page:
 ```
 WebFetch(
-  url: "https://dayz-scripts.yadz.app/",
-  prompt: "Find documentation for the class or method '{CLASS_OR_METHOD}'.
-           Include: inheritance, methods, parameters, return types."
+  url: "https://diff.yadz.app/classes/{CLASS_NAME}/",
+  prompt: "Show the inheritance, and the signature of '{METHOD}' (parameters, return type, modifiers)."
 )
 ```
 
 **Key API Pages:**
 | Category | URL |
 |----------|-----|
-| Enforce Essentials | https://dayz-scripts.yadz.app/d5/d78/group___enforce |
-| Math Library | https://dayz-scripts.yadz.app/d5/d98/group___math |
-| String Methods | https://dayz-scripts.yadz.app/d5/da2/group___strings |
-| Widget UI System | https://dayz-scripts.yadz.app/d9/d0e/group___widget_a_p_i |
-| Math Class | https://dayz-scripts.yadz.app/d4/d34/class_math |
+| Enforce Essentials | https://diff.yadz.app/topics/Enforce/ |
+| Math | https://diff.yadz.app/topics/Math/ |
+| Widget UI System | https://diff.yadz.app/topics/Widget/ |
+| Physics | https://diff.yadz.app/topics/Physics/ |
+| Globals (functions, enums, constants) | https://diff.yadz.app/globals/ |
+| Deprecated | https://diff.yadz.app/deprecated/ |
+| Release notes (incl. MODDING sections) | https://diff.yadz.app/release-notes/ |
+| Older builds (HTML) | `https://diff.yadz.app/v/<label>/` e.g. `/v/128u4/`, `/v/experimental/` |
 
 #### Alternate API Reference (older but comprehensive)
 **Base URL:** `https://dayzexplorer.zeroy.com/`
@@ -221,7 +245,7 @@ WebFetch(
 - Method calls (`GetInventory()`, `CreateInInventory()`, `SetHealth()`)
 - "enforce script", "dayz class", "dayz method", "script API"
 
-**Action:** Fetch from `https://dayz-scripts.yadz.app/` or `DayZ-Script-Diff`
+**Action:** Look up in `https://diff.yadz.app/api.json` (or `classes/<Name>/`) or `DayZ-Script-Diff`
 
 ### RULE 2: Config.cpp / CfgVehicles Detection
 **Triggers when:**
@@ -263,15 +287,35 @@ WebFetch(
 
 **Action:** Read local `config/server-config.md` + Fetch from DZconfig wiki
 
-### RULE 7: 1.28 Compatibility
+### RULE 7: Version Compatibility (1.29 / 1.28)
 **Triggers when:**
-- "1.28", "update", "breaking change", "migration", "compatibility"
+- "1.29", "1.28", "update", "breaking change", "migration", "compatibility"
+- `ActiveState`, `LightIsOn`, `m_HeadlightsOn`, `EntityType`, `GizmoApi`, `GetCachedEquipment`, juncture `userData`
 - `sealed`, `Obsolete`, `Contact`, `SurfaceProperties`
-- "vehicle brake", "useNewNetworking", "parameter limit"
+- "vehicle brake", "useNewNetworking", "parameter limit", "headlights"
 
-**Action:** Read local `compatibility/version-128.md`
+**Action:** Read local `compatibility/version-129.md` (current); `compatibility/version-128.md` for 1.27 → 1.28.
+For changes between two specific builds, diff the DayZ-Script-Diff commits listed in
+https://diff.yadz.app/assets/versions.json.
 
-### RULE 8: Local Knowledge
+### RULE 8: Testing a Mod
+**Triggers when:**
+- A mod change is about to be called done, or "test", "verify", "does it load", "run the server"
+- `DayZServer`, `-servermod`, `-mod=`, `script_*.log`, `.RPT`, "compile error", "mod not loading"
+
+**Action:** Read local `testing/local-server.md`. Locate the server with
+`${CLAUDE_SKILL_DIR}/scripts/find-dayzserver.sh` (Steam app 223350); if it is missing, ask the
+user to install it through Steam - do not set up steamcmd unless they ask. **Never copy, edit or
+write anything in the Steam directories**: run the server from a tree of your own made by
+`${CLAUDE_SKILL_DIR}/scripts/make-server-tree.sh <tree>`, with mods symlinked into it
+(workshop mods from `find-dayzserver.sh -w`) and passed as relative `-servermod=`/`-mod=` paths.
+**Never run two servers on the same tree** (same `profiles/` or `mpmissions/`): they lock those
+folders and corrupt each other. For parallel debugging build one tree per server. **Never leave
+the game, Steam query or RCon port at its default**: take random free ones from
+`${CLAUDE_SKILL_DIR}/scripts/free-ports.sh 3` for every server.
+A PBO that builds is not a tested mod: boot it and compare the script module counts with vanilla.
+
+### RULE 9: Local Knowledge
 **Triggers when:**
 - Mod structure, folder layout, PBO packaging
 - Best practices, anti-patterns, common pitfalls
@@ -387,9 +431,9 @@ MyMod/
 | Add `: ParentClass` to `modded class` | `modded class` already inherits - never add inheritance |
 | `delete obj;` | `obj = null;` (let GC handle cleanup) |
 | Trust client data in RPCs | Always validate server-side |
-| `GetGame()` in hot paths | Use `g_Game` global (1.28+ optimization) |
+| `GetGame()` | Use `g_Game` global (1.29: `GetGame()` is just a script wrapper around `g_Game`) |
 | `SurfaceIsPond()` / `SurfaceIsSea()` | `g_Game.GetWaterDepth(pos) <= 0` (much faster) |
-| `GetObjectsAtPosition()` frequently | Use static arrays, triggers, or GetScene() |
+| `GetObjectsAtPosition()` frequently | Cache results, use triggers, or keep your own registry of relevant objects |
 | Empty `#ifdef` / `#endif` blocks | Always have content or remove entirely |
 | Hardcode framework dependencies | Detect at runtime via config.cpp |
 | Skip null checks on Cast<> | Always check before using result |
@@ -485,4 +529,4 @@ class MyEntity extends ItemBase
 | UI/HUD design | Read `scripting/` files for Widget system |
 | Server administration | Read `config/server-config.md` |
 | Expansion modding | Read `frameworks/expansion.md` |
-| Version migration | Read `compatibility/version-128.md` |
+| Version migration | Read `compatibility/version-129.md` (and `version-128.md` for older mods) |
